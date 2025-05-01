@@ -1,0 +1,229 @@
+body {
+    font-family: Arial, sans-serif;
+    background: #f9f9f9;
+    margin: 0;
+    padding: 0;
+    color: #222;
+}
+
+#app {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 24px;
+    background: #fff;
+    min-height: 100vh;
+}
+
+.search-bar {
+    position: relative;
+    margin-bottom: 24px;
+}
+
+.search-bar input {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    color: #222;
+    background: #fff;
+}
+
+.search-results {
+    position: absolute;
+    width: 100%;
+    background: #fff;
+    border: 1px solid #ddd;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    z-index: 1000;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.search-results li {
+    padding: 10px;
+    cursor: pointer;
+    color: #222;
+    background: #fff;
+    transition: background 0.15s, color 0.15s;
+}
+
+.search-results li:hover {
+    background: #e6f7ff;
+    color: #111;
+}
+
+.user-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.modal-content {
+    background: #fff;
+    padding: 32px 24px;
+    border-radius: 8px;
+    min-width: 300px;
+    text-align: center;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+    color: #222;
+    position: relative;
+}
+
+.modal-content h3 {
+    margin-top: 0;
+}
+
+.modal-content button {
+    margin-top: 16px;
+}
+
+.profile-info {
+    text-align: left;
+    margin: 0 0 16px 0;
+}
+
+.profile-info p {
+    margin: 6px 0;
+    color: #222;
+}
+
+.messaging {
+    display: flex;
+    gap: 20px;
+}
+
+.left {
+    width: 250px;
+}
+
+.right {
+    flex: 1;
+}
+
+.messages {
+    list-style: none;
+    padding: 0;
+}
+
+.messages li {
+    margin: 10px 0;
+}
+
+.group {
+    list-style: none;
+    padding: 0;
+}
+
+.group li {
+    margin: 6px 0;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+button {
+    color: #222;
+    background: #f0f0f0;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+button:hover,
+input[type="submit"]:hover {
+    background: #e6f7ff;
+    color: #111;
+}
+
+input,
+textarea {
+    color: #222;
+    background: #fff;
+}
+
+fieldset {
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
+.profile-edit-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 10;
+}
+
+.inbox-btn {
+    position: absolute;
+    top: 16px;
+    right: 120px;
+    z-index: 10;
+}
+
+.profile-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.profile-modal-content {
+    background: #fff;
+    padding: 2em;
+    border-radius: 8px;
+    min-width: 320px;
+    max-width: 90vw;
+}
+
+.profile-modal-content input,
+.profile-modal-content textarea {
+    width: 100%;
+    margin-bottom: 1em;
+}
+
+.search-results {
+    list-style: none;
+    padding: 0;
+    position: absolute;
+    background: #fff;
+    border: 1px solid #ccc;
+    width: 250px;
+    z-index: 20;
+}
+
+.search-results li {
+    padding: 8px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+
+.search-results li:hover {
+    background: #f5f5f5;
+}
+
+.search-bar {
+    position: relative;
+}

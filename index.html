@@ -1,1 +1,338 @@
-Hello, World!
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Designftw Chatroom</title>
+    <script type="importmap">
+        {
+            "imports": {
+                "vue": "https://cdn.jsdelivr.net/npm/vue@3.5.13/dist/vue.esm-browser.js",
+                "@graffiti-garden/implementation-local": "https://cdn.jsdelivr.net/npm/@graffiti-garden/implementation-local@0.6.4/dist/browser/index.js",
+                "@graffiti-garden/implementation-remote": "https://cdn.jsdelivr.net/npm/@graffiti-garden/implementation-remote@0.6.2/dist/browser/index.js",
+                "@graffiti-garden/wrapper-vue": "https://cdn.jsdelivr.net/npm/@graffiti-garden/wrapper-vue@0.7.2/dist/browser/plugin.mjs"
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <button
+            v-if="$graffitiSession.value"
+            class="inbox-btn"
+            @click="showInbox = !showInbox"
+        >
+            Inbox <span v-if="pendingFriendRequests.length" style="color:red;">({{ pendingFriendRequests.length }})</span>
+        </button>
+        <button
+            v-if="$graffitiSession.value"
+            class="profile-edit-btn"
+            @click="openProfileEditor"
+        >
+            Edit Profile
+        </button>
+
+        <div v-if="showInbox" class="profile-modal">
+            <div class="profile-modal-content">
+                <h2>Inbox</h2>
+                <ul v-if="pendingFriendRequests.length">
+                    <li v-for="req in pendingFriendRequests" :key="req.url" style="margin-bottom:1em;">
+                        <strong>{{ getUserName(req.value.from) }}</strong>
+                        <button @click="acceptFriendRequest(req)">Accept</button>
+                        <button @click="declineFriendRequest(req)">Decline</button>
+                    </li>
+                </ul>
+                <div v-else>No Pending Requests or Invitations</div>
+                <button @click="showInbox = false" style="margin-top:1em;">Close</button>
+            </div>
+        </div>
+
+        <div v-if="showProfileEditor" class="profile-modal">
+            <div class="profile-modal-content">
+                <h2>Edit Profile</h2>
+                <form @submit.prevent="saveProfile($graffitiSession.value)">
+                    <label>
+                        Username:
+                        <input v-model="editProfile.username" required readonly/>
+                    </label>
+                    <label>
+                        Name:
+                        <input v-model="editProfile.name" required />
+                    </label>
+                    <label>
+                        Pronouns:
+                        <input v-model="editProfile.pronouns" />
+                    </label>
+                    <label>
+                        Status:
+                        <input v-model="editProfile.status" />
+                    </label>
+                    <label>
+                        Bio:
+                        <textarea v-model="editProfile.bio"></textarea>
+                    </label>
+                    <button type="submit">Save</button>
+                    <button type="button" @click="showProfileEditor = false">Cancel</button>
+                </form>
+            </div>
+        </div>
+
+        <graffiti-discover 
+            v-slot="{ objects: allUsers }"
+            :channels="[USER_CHANNEL]"
+            :schema="{
+                properties: {
+                    value: {
+                        type: 'object',
+                        required: ['username', 'name', 'pronouns', 'status', 'bio'],
+                        properties: {
+                            username: { type: 'string' },
+                            name: { type: 'string' },
+                            pronouns: { type: 'string' },
+                            status: { type: 'string' },
+                            bio: { type: 'string' }
+                        }
+                    }
+                }
+            }"
+        >
+            <div style="display: none">{{ updateAllUsers(allUsers) }}</div>
+        </graffiti-discover>
+        <graffiti-discover
+            v-slot="{ objects: friendRequests }"
+            :channels="[$graffitiSession?.actor + '/friend-requests']"
+            :schema="{
+                properties: {
+                    value: {
+                        type: 'object',
+                        required: ['from', 'status'],
+                        properties: {
+                            from: { type: 'string' },
+                            status: { type: 'string' }
+                        }
+                    }
+                }
+            }"
+        >
+            <div style="display:none">{{ updatePendingFriendRequests(friendRequests) }}</div>
+        </graffiti-discover>
+
+        <div class="search-bar">
+            <input
+                type="text"
+                v-model="searchQuery"
+                placeholder="Search users by username..."
+            />
+            <ul class="search-results" v-if="searchQuery && filteredUsers.length">
+                <li
+                    v-for="user in filteredUsers"
+                    :key="user.id"
+                    @mousedown.prevent="selectUser(user)"
+                >
+                    {{ user.profile.username }}
+                </li>
+            </ul>
+        </div>
+
+        <div class="user-modal" v-if="selectedUser">
+            <div class="modal-content">
+                <button class="close-btn" @click="selectedUser = null"
+                    style="position:absolute;top:8px;right:8px;">&times;</button>
+                <h3>{{ selectedUser.profile.username }}</h3>
+                <div class="profile-info">
+                    <p><strong>Name:</strong> {{ selectedUser.profile.name }}</p>
+                    <p><strong>Pronouns:</strong> {{ selectedUser.profile.pronouns }}</p>
+                    <p><strong>Status:</strong> {{ selectedUser.profile.status }}</p>
+                    <p><strong>Bio:</strong> {{ selectedUser.profile.bio }}</p>
+                </div>
+                <friend-button
+                    :user-id="selectedUser.id"
+                    @friend-requested="handleFriendRequest"
+                />
+                <br>
+                <button @click="selectedUser = null">Close</button>
+            </div>
+        </div>
+
+        <h1>DesignFTW Chatroom</h1>
+        <section class="top">
+            <button v-if="!$graffitiSession.value" @click="$graffiti.login()">
+                Log In
+            </button>
+            <template v-else>
+                <button @click="$graffiti.logout($graffitiSession.value)">
+                    Log Out
+                </button>
+                <h3>Create A Group Chat</h3>
+                <form @submit.prevent="createGroupChat($graffitiSession.value)">
+                    <input 
+                        type="text" 
+                        v-model="groupChatName" 
+                        placeholder="Group Chat Name"
+                        ref="groupChatNameInput"
+                    >
+                    <input
+                        type="text"
+                        v-model="groupChatMembers"
+                        placeholder="Add members (comma-separated user IDs)"
+                    >
+                    <input 
+                        type="submit" 
+                        :value="creating ? 'Creating...' : 'Create'"
+                    >
+                </form>
+            </template>
+        </section>
+
+        <div class="messaging">
+            <section class="left">
+                <h2>Direct Messages</h2>
+                <graffiti-discover 
+                    v-slot="{ objects: groupChatObjects }" 
+                    :channels="channels"
+                    :schema="{
+                        properties: {
+                            value: {
+                                type: 'object',
+                                required: ['activity', 'object'],
+                                properties: {
+                                    activity: { type: 'string' },
+                                    object: {
+                                        type: 'object',
+                                        required: ['type', 'name', 'channel', 'members'],
+                                        properties: {
+                                            type: { type: 'string' },
+                                            name: { type: 'string' },
+                                            channel: { type: 'string' },
+                                            members: {
+                                                type: 'array',
+                                                items: { type: 'string' }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }"
+                >
+                    <graffiti-discover 
+                        v-slot="{ objects: nameChangeObjects }"
+                        :channels="groupChatObjects.map(gc => gc.value.object.channel)" 
+                        :schema="{
+                            properties: {
+                                value: {
+                                    type: 'object',
+                                    required: ['name', 'describes', 'published'],
+                                    properties: {
+                                        name: { type: 'string' },
+                                        describes: { type: 'string' },
+                                        published: { type: 'number' }
+                                    }
+                                }
+                            }
+                        }"
+                    >
+                        <div style="display: none">{{ allNameChanges = nameChangeObjects }}</div>
+                    </graffiti-discover>
+                    
+                    <ul class="group-chats">
+                        <li v-for="gc in groupChatObjects" :key="gc.url">
+                            <button @click="groupChat = gc.value.object">
+                                {{ resolveName(gc.value.object) }}
+                            </button>
+                        </li>
+                    </ul>
+                </graffiti-discover>
+            </section>
+
+            <section class="right" v-if="groupChat.channel">
+                <div class="chat-header">
+                    <template v-if="editingGroupChatName">
+                        <form @submit.prevent="saveGroupChatName($graffitiSession.value)">
+                            <input v-model="newGroupChatName" placeholder="New Group Chat Name" />
+                            <button type="submit">Save</button>
+                            <button type="button" @click="cancelGroupEdit">Cancel</button>
+                        </form>
+                    </template>
+                    <template v-else>
+                        <h2>{{ resolveName(groupChat) }}</h2>
+                        <button @click="startGroupChatEdit">Edit Name</button>
+                    </template>
+                </div>
+
+                <graffiti-discover 
+                    v-slot="{ objects: messages }" 
+                    :channels="[groupChat.channel]"
+                    :schema="{
+                        properties: {
+                            value: {
+                                type: 'object',
+                                required: ['content', 'published'],
+                                properties: {
+                                    content: { type: 'string' },
+                                    published: { type: 'number' },
+                                    edited: { type: 'boolean' }
+                                }
+                            }
+                        }
+                    }"
+                >
+                    <div class="messages">
+                        <div 
+                            v-for="msg in sortedMessages(messages)" 
+                            :key="msg.url"
+                            class="message"
+                        >
+                            <div class="message-header">
+                                <strong>{{ msg.actor }}</strong>
+                                <span v-if="msg.actor === $graffitiSession.value?.actor">(you)</span>
+                                <time>{{ new Date(msg.value.published).toLocaleTimeString() }}</time>
+                            </div>
+                            <div class="message-content">
+                                <template v-if="editingMessageUrl === msg.url">
+                                    <form @submit.prevent="saveEditMessage($graffitiSession.value, msg)">
+                                        <input v-model="editMessageContent" />
+                                        <button type="submit">Save</button>
+                                        <button type="button" @click="cancelEdit">Cancel</button>
+                                    </form>
+                                </template>
+                                <template v-else>
+                                    {{ msg.value.content }}
+                                    <span 
+                                        v-if="msg.value.edited"
+                                        class="edited-marker"
+                                    >
+                                        (edited)
+                                    </span>
+                                    <button 
+                                        v-if="msg.actor === $graffitiSession.value?.actor" 
+                                        @click="startEditMessage(msg)"
+                                    >Edit</button>
+                                    <button 
+                                        v-if="msg.actor === $graffitiSession.value?.actor" 
+                                        @click="deleteMessage($graffitiSession.value, msg.url)"
+                                    >Delete</button>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </graffiti-discover>
+
+                <form @submit.prevent="sendMessage($graffitiSession.value)">
+                    <input
+                        type="text"
+                        v-model="myMessage"
+                        placeholder="Type your message..."
+                        ref="messageInput"
+                    >
+                    <button type="submit" :disabled="sending">
+                        {{ sending ? 'Sending...' : 'Send' }}
+                    </button>
+                </form>
+            </section>
+        </div>
+    </div>
+    <script src="index.js" type="module"></script>
+</body>
+</html>
