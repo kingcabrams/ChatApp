@@ -53,10 +53,6 @@
                 <h2>Edit Profile</h2>
                 <form @submit.prevent="saveProfile($graffitiSession.value)">
                     <label>
-                        Username:
-                        <input v-model="editProfile.username" required readonly/>
-                    </label>
-                    <label>
                         Name:
                         <input v-model="editProfile.name" required />
                     </label>
@@ -89,6 +85,7 @@
                         properties: {
                             username: { type: 'string' },
                             name: { type: 'string' },
+                            generator: { type: 'string' },
                             pronouns: { type: 'string' },
                             status: { type: 'string' },
                             bio: { type: 'string' }
@@ -261,7 +258,7 @@
                     </template>
                 </div>
 
-                <graffiti-discover 
+                <graffiti-discover autopoll 
                     v-slot="{ objects: messages }" 
                     :channels="[groupChat.channel]"
                     :schema="{

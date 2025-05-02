@@ -37,6 +37,7 @@ const FriendButton = {
 const { createApp } = await import('vue');
 const { GraffitiLocal } = await import('@graffiti-garden/implementation-local');
 const { GraffitiPlugin } = await import('@graffiti-garden/wrapper-vue');
+const { GraffitiRemote } = await import('@graffiti-garden/implementation-remote');
 
 createApp({
     components: { FriendButton },
@@ -232,12 +233,13 @@ createApp({
                 const newProfile = await this.$graffiti.put({
                     value: {
                         username: defaultUsername,
+						generator: 'https://kingcabrams.github.io/ChatApp/',
                         name: 'New User',
                         pronouns: '',
                         status: '',
                         bio: ''
                     },
-                    channels: [this.USER_CHANNEL]
+                    channels: [this.USER_CHANNEL, 'designftw-2025-studio2']
                 }, session);
                 this.allUsers.push(newProfile);
             }
@@ -257,12 +259,12 @@ createApp({
                 await this.$graffiti.put({
                     ...currentProfile,
                     value: this.editProfile,
-                    channels: [this.USER_CHANNEL]
+                    channels: [this.USER_CHANNEL, 'designftw-2025-studio2']
                 }, session);
             } else {
                 await this.$graffiti.put({
                     value: this.editProfile,
-                    channels: [this.USER_CHANNEL]
+					channels: [this.USER_CHANNEL, 'designftw-2025-studio2']
                 }, session);
             }
             this.showProfileEditor = false;
@@ -279,5 +281,5 @@ createApp({
         }
     }
 })
-.use(GraffitiPlugin, { graffiti: new GraffitiLocal() })
+.use(GraffitiPlugin, { graffiti: new GraffitiRemote() })
 .mount('#app');
