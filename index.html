@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Designftw Chatroom</title>
+    <title>Restricted Group Chat</title>
     <script type="importmap">
         {
             "imports": {
@@ -18,20 +18,10 @@
 </head>
 <body>
     <div id="app">
-        <button
-            v-if="$graffitiSession.value"
-            class="inbox-btn"
-            @click="showInbox = !showInbox"
-        >
+        <button v-if="$graffitiSession.value" @click="showInbox = !showInbox">
             Inbox <span v-if="pendingFriendRequests.length" style="color:red;">({{ pendingFriendRequests.length }})</span>
         </button>
-        <button
-            v-if="$graffitiSession.value"
-            class="profile-edit-btn"
-            @click="openProfileEditor"
-        >
-            Edit Profile
-        </button>
+        <button v-if="$graffitiSession.value" @click="openProfileEditor">Edit Profile</button>
 
         <div v-if="showInbox" class="profile-modal">
             <div class="profile-modal-content slide-in">
@@ -102,7 +92,7 @@
         </graffiti-discover>
         <graffiti-discover
             v-slot="{ objects: friendRequests }"
-            :channels="[$graffitiSession?.actor + '/friend-requests']"
+            :channels="[`/actors/${$graffitiSession?.actor}/friend-requests`]"
             :schema="{
                 properties: {
                     value: {
@@ -156,7 +146,6 @@
             </div>
         </div>
 
-        <h1>DesignFTW Chatroom</h1>
         <section class="top">
             <button v-if="!$graffitiSession.value" @click="$graffiti.login()">
                 Log In
@@ -176,7 +165,7 @@
                     <input
                         type="text"
                         v-model="groupChatMembers"
-                        placeholder="Add members (comma-separated user IDs)"
+                        placeholder="Add members (comma-separated usernames)"
                     >
                     <input 
                         type="submit" 
@@ -188,10 +177,10 @@
 
         <div class="messaging">
             <section class="left">
-                <h2>Direct Messages</h2>
+                <h2>Group Chats</h2>
                 <graffiti-discover 
                     v-slot="{ objects: groupChatObjects }" 
-                    :channels="channels"
+                    :channels="[`/actors/${$graffitiSession?.actor}/group-chats`]"
                     :schema="{
                         properties: {
                             value: {
@@ -262,7 +251,7 @@
                     </template>
                 </div>
 
-                <graffiti-discover autopoll 
+                <graffiti-discover
                     v-slot="{ objects: messages }" 
                     :channels="[groupChat.channel]"
                     :schema="{
@@ -302,12 +291,7 @@
                                 </template>
                                 <template v-else>
                                     {{ msg.value.content }}
-                                    <span 
-                                        v-if="msg.value.edited"
-                                        class="edited-marker"
-                                    >
-                                        (edited)
-                                    </span>
+                                    <span v-if="msg.value.edited" class="edited-marker">(edited)</span>
                                     <button 
                                         v-if="msg.actor === $graffitiSession.value?.actor" 
                                         @click="startEditMessage(msg)"
@@ -321,7 +305,6 @@
                         </div>
                     </div>
                 </graffiti-discover>
-
                 <form @submit.prevent="sendMessage($graffitiSession.value)">
                     <input
                         type="text"

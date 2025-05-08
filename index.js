@@ -10,6 +10,8 @@ const FriendButton = {
     methods: {
         async addFriend() {
             this.loading = true;
+            //why is this not working
+            console.log(this.userId);
             setTimeout(async () => {
                 this.status = 'pending';
                 this.loading = false;
@@ -18,11 +20,8 @@ const FriendButton = {
                     this.pulsing = false;
                 }, 500);
                 await this.$root.$graffiti.put({
-                    value: {
-                        from: this.$root.$graffitiSession.value.actor,
-                        status: 'pending'
-                    },
-                    channels: [this.userId + '/friend-requests']
+                    value: { from: this.$root.$graffitiSession.value.actor, status: 'pending' },
+                    channels: [`/actors/${this.userId}/friend-requests`]
                 }, this.$root.$graffitiSession.value);
                 this.$emit('friend-requested', this.userId);
             }, 1000);
@@ -30,7 +29,7 @@ const FriendButton = {
     },
     template: `
         <button 
-            @click="addFriend" 
+            @click="addFriend"
             :disabled="loading || status !== 'none'"
             class="friend-button"
             :class="{ loading: loading, pulse: pulsing }"
@@ -62,7 +61,6 @@ createApp({
             allNameChanges: [],
             showProfileEditor: false,
             editProfile: { username: '', name: '', pronouns: '', status: '', bio: '' },
-            channels: ['designftw'],
             editingMessageUrl: null,
             editMessageContent: '',
             editingGroupChatName: false,
@@ -105,16 +103,19 @@ createApp({
             }
             this.sending = true;
             try {
-                const msg = await this.$graffiti.put({
+                // Restrict messages to group members using bto
+                const members = this.groupChat.members || [];
+                await this.$graffiti.put({
                     value: {
                         content: this.myMessage,
                         published: Date.now(),
-                        edited: false
+                        edited: false,
+                        bto: members
                     },
                     channels: [this.groupChat.channel]
                 }, session);
                 this.myMessage = '';
-                this.newMessageId = msg.url;
+                this.newMessageId = Math.random().toString(36);
                 await nextTick();
                 setTimeout(() => {
                     this.newMessageId = null;
@@ -194,23 +195,36 @@ createApp({
             if (!this.groupChatName.trim()) return;
             this.creating = true;
             try {
-                const members = this.groupChatMembers
+                const usernames = this.groupChatMembers
                     .split(',')
-                    .map(id => id.trim())
-                    .filter(id => id.length > 0);
+                    .map(u => u.trim())
+                    .filter(u => u.length > 0);
 
-                await this.$graffiti.put({
-                    value: {
-                        activity: 'Create',
-                        object: {
-                            type: 'Group Chat',
-                            name: this.groupChatName,
-                            members,
-                            channel: crypto.randomUUID()
-                        }
-                    },
-                    channels: this.channels
-                }, session);
+                const members = this.allUsers
+                    .filter(u => usernames.includes(u.value.username))
+                    .map(u => u.actor);
+
+                if (!members.includes(session.actor)) {
+                    members.push(session.actor);
+                }
+
+                const groupChannel = crypto.randomUUID();
+
+                for (const member of members) {
+                    await this.$graffiti.put({
+                        value: {
+                            activity: 'Create',
+                            object: {
+                                type: 'Group Chat',
+                                name: this.groupChatName,
+                                members,
+                                channel: groupChannel
+                            }
+                        },
+                        channels: [`/actors/${member}/group-chats`]
+                    }, session);
+                }
+
                 this.groupChatName = '';
                 this.groupChatMembers = '';
             } finally {
@@ -261,7 +275,7 @@ createApp({
                         status: '',
                         bio: ''
                     },
-                    channels: [this.USER_CHANNEL, 'designftw-2025-studio2']
+                    channels: [this.USER_CHANNEL]
                 }, session);
                 this.allUsers.push(newProfile);
             }
@@ -285,12 +299,12 @@ createApp({
                 await this.$graffiti.put({
                     ...currentProfile,
                     value: this.editProfile,
-                    channels: [this.USER_CHANNEL, 'designftw-2025-studio2']
+                    channels: [this.USER_CHANNEL]
                 }, session);
             } else {
                 await this.$graffiti.put({
                     value: this.editProfile,
-                    channels: [this.USER_CHANNEL, 'designftw-2025-studio2']
+                    channels: [this.USER_CHANNEL]
                 }, session);
             }
             this.profileSaved = true;
