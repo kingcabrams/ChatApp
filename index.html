@@ -34,7 +34,7 @@
         </button>
 
         <div v-if="showInbox" class="profile-modal">
-            <div class="profile-modal-content">
+            <div class="profile-modal-content slide-in">
                 <h2>Inbox</h2>
                 <ul v-if="pendingFriendRequests.length">
                     <li v-for="req in pendingFriendRequests" :key="req.url" style="margin-bottom:1em;">
@@ -49,7 +49,11 @@
         </div>
 
         <div v-if="showProfileEditor" class="profile-modal">
-            <div class="profile-modal-content">
+            <div class="profile-modal-content"
+                :class="{ 'highlight-save': profileSaved }"
+                :key="$graffitiSession.value?.actor + (profileSaved ? '-saved' : '')"
+                @animationend="profileSaved = false"
+            >
                 <h2>Edit Profile</h2>
                 <form @submit.prevent="saveProfile($graffitiSession.value)">
                     <label>
@@ -280,6 +284,8 @@
                             v-for="msg in sortedMessages(messages)" 
                             :key="msg.url"
                             class="message"
+                            :class="{ 'fade-in': newMessageId === msg.url }"
+                            @animationend="clearNewMessage(msg.url)"
                         >
                             <div class="message-header">
                                 <strong>{{ msg.actor }}</strong>
@@ -321,6 +327,8 @@
                         type="text"
                         v-model="myMessage"
                         placeholder="Type your message..."
+                        :class="{ shake: shakeInput }"
+                        @animationend="shakeInput = false"
                         ref="messageInput"
                     >
                     <button type="submit" :disabled="sending">

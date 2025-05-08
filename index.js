@@ -3,7 +3,8 @@ const FriendButton = {
     data() {
         return {
             status: 'none',
-            loading: false
+            loading: false,
+            pulsing: false
         }
     },
     methods: {
@@ -12,6 +13,10 @@ const FriendButton = {
             setTimeout(async () => {
                 this.status = 'pending';
                 this.loading = false;
+                this.pulsing = true;
+                setTimeout(() => {
+                    this.pulsing = false;
+                }, 500);
                 await this.$root.$graffiti.put({
                     value: {
                         from: this.$root.$graffitiSession.value.actor,
@@ -28,16 +33,17 @@ const FriendButton = {
             @click="addFriend" 
             :disabled="loading || status !== 'none'"
             class="friend-button"
+            :class="{ loading: loading, pulse: pulsing }"
         >
+            <span v-if="loading" class="loading-spinner"></span>
             {{ loading ? 'Sending...' : status === 'none' ? 'Add Friend' : 'Request Pending' }}
         </button>
     `
 };
 
-const { createApp } = await import('vue');
+const { createApp, nextTick } = await import('vue');
 const { GraffitiLocal } = await import('@graffiti-garden/implementation-local');
 const { GraffitiPlugin } = await import('@graffiti-garden/wrapper-vue');
-const { GraffitiRemote } = await import('@graffiti-garden/implementation-remote');
 
 createApp({
     components: { FriendButton },
@@ -62,7 +68,10 @@ createApp({
             editingGroupChatName: false,
             newGroupChatName: '',
             showInbox: false,
-            pendingFriendRequests: []
+            pendingFriendRequests: [],
+            shakeInput: false,
+            profileSaved: false,
+            newMessageId: null
         }
     },
     computed: {
@@ -87,14 +96,16 @@ createApp({
     },
     methods: {
         sortedMessages(messages) {
-            return [...messages].sort((a, b) => b.value.published - a.value.published);
+            return [...messages].sort((a, b) => a.value.published - b.value.published);
         },
-
         async sendMessage(session) {
-            if (!this.myMessage.trim()) return;
+            if (!this.myMessage.trim()) {
+                this.shakeInput = true;
+                return;
+            }
             this.sending = true;
             try {
-                await this.$graffiti.put({
+                const msg = await this.$graffiti.put({
                     value: {
                         content: this.myMessage,
                         published: Date.now(),
@@ -103,8 +114,19 @@ createApp({
                     channels: [this.groupChat.channel]
                 }, session);
                 this.myMessage = '';
+                this.newMessageId = msg.url;
+                await nextTick();
+                setTimeout(() => {
+                    this.newMessageId = null;
+                }, 400);
             } finally {
                 this.sending = false;
+            }
+        },
+
+        clearNewMessage(url) {
+            if (this.newMessageId === url) {
+                this.newMessageId = null;
             }
         },
 
@@ -233,7 +255,7 @@ createApp({
                 const newProfile = await this.$graffiti.put({
                     value: {
                         username: defaultUsername,
-						generator: 'https://kingcabrams.github.io/ChatApp/',
+                        generator: 'https://kingcabrams.github.io/ChatApp/',
                         name: 'New User',
                         pronouns: '',
                         status: '',
@@ -247,15 +269,19 @@ createApp({
 
         openProfileEditor() {
             const currentProfile = this.allUsers.find(u => u.actor === this.$graffitiSession.value?.actor);
-            if (currentProfile) {
-                this.editProfile = { ...currentProfile.value };
-            }
+            this.editProfile = currentProfile
+                ? { ...currentProfile.value }
+                : { username: '', name: '', pronouns: '', status: '', bio: '' };
             this.showProfileEditor = true;
         },
 
         async saveProfile(session) {
             const currentProfile = this.allUsers.find(u => u.actor === session.actor);
             if (currentProfile) {
+                const updatedProfile = { ...currentProfile, value: this.editProfile };
+                this.allUsers = this.allUsers.map(u =>
+                    u.actor === session.actor ? updatedProfile : u
+                );
                 await this.$graffiti.put({
                     ...currentProfile,
                     value: this.editProfile,
@@ -264,10 +290,13 @@ createApp({
             } else {
                 await this.$graffiti.put({
                     value: this.editProfile,
-					channels: [this.USER_CHANNEL, 'designftw-2025-studio2']
+                    channels: [this.USER_CHANNEL, 'designftw-2025-studio2']
                 }, session);
             }
-            this.showProfileEditor = false;
+            this.profileSaved = true;
+            setTimeout(() => {
+                this.showProfileEditor = false;
+            }, 1000);
         },
 
         selectUser(user) {
@@ -276,10 +305,9 @@ createApp({
         },
 
         handleFriendRequest(userId) {
-            alert(`Friend request sent to ${userId}`);
             this.selectedUser = null;
         }
     }
 })
-.use(GraffitiPlugin, { graffiti: new GraffitiRemote() })
+.use(GraffitiPlugin, { graffiti: new GraffitiLocal() })
 .mount('#app');
